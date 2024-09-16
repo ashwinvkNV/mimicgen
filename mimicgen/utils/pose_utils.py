@@ -119,6 +119,30 @@ def quat2axisangle(quat):
 
     return quat[:3] / den, 2. * math.acos(quat[3])
 
+def quat2mat(quat):
+    """
+    Converts a (w, x, y, z) quaternion to a 3x3 rotation matrix.
+
+    Args:
+        quat (np.array): A 4-element array representing the quaternion (x, y, z, w).
+
+    Returns:
+        np.array: A 3x3 rotation matrix.
+    """
+    # Normalize quaternion
+    q = quat / np.linalg.norm(quat)
+
+    w, x, y, z = q
+
+    # Compute the rotation matrix components
+    R = np.array([
+        [2 * (w**2 + x**2) - 1, 2 * (x*y - w*z),     2 * (x*z + w*y)],
+        [2 * (x*y + w*z),     2 * (w**2 + y**2) - 1, 2 * (y*z - w*x)],
+        [2 * (x*z - w*y),     2 * (y*z + w*x),     2 * (w**2 + z**2) - 1]
+    ])
+
+    return R
+
 
 def axisangle2quat(axis, angle):
     """

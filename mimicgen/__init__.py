@@ -11,6 +11,13 @@ except ImportError as e:
     print("WARNING: robosuite environment interfaces not imported...")
     print("Got error: {}".format(e))
 
+# try to import all environment interfaces here
+try:
+    from mimicgen.env_interfaces.isaac_lab import *
+except ImportError as e:
+    print("WARNING: isaac_lab environment interfaces not imported...")
+    print("Got error: {}".format(e))
+
 # import tasks to make sure they are added to robosuite task registry
 try:
     from mimicgen.envs.robosuite.threading import *
