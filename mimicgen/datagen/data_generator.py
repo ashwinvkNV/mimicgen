@@ -240,7 +240,7 @@ class DataGenerator(object):
 
         # sample new task instance
         env.reset()
-        new_initial_state = env.get_state()
+        new_initial_state = env.env.state
 
         # sample new subtask boundaries
         all_subtask_inds = self.randomize_subtask_boundaries() # shape [N, S, 2], last dim is start and end action lengths
@@ -297,7 +297,7 @@ class DataGenerator(object):
             src_subtask_eef_poses = src_ep_datagen_info.eef_pose[selected_src_subtask_inds[0] : selected_src_subtask_inds[1]]
             src_subtask_target_poses = src_ep_datagen_info.target_pose[selected_src_subtask_inds[0] : selected_src_subtask_inds[1]]
             src_subtask_gripper_actions = src_ep_datagen_info.gripper_action[selected_src_subtask_inds[0] : selected_src_subtask_inds[1]]
-            
+
             # get reference object pose from source demo
             src_subtask_object_pose = src_ep_datagen_info.object_poses[subtask_object_name][selected_src_subtask_inds[0]] if (subtask_object_name is not None) else None
 

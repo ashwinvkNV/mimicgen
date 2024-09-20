@@ -132,8 +132,8 @@ class IsaacLabInterface(MG_EnvInterface):
 
         if obj_type == "asset":
             # TODO: how do we handle multiple envs in a single scene
-            obj_pos = np.array(self.env.unwrapped.scene[obj_name].root_pos_w()[0]) # Get the pose from the first environment
-            obj_rot = np.array(self.env.unwrapped.scene[obj_name].root_quat_w()[0]) # Get the orienation quaternion from the first environment
+            obj_pos = np.array(self.env.unwrapped.scene[obj_name].data.root_pos_w.cpu().numpy()[0, :]) # Get the pose from the first environment
+            obj_rot = np.array(self.env.unwrapped.scene[obj_name].data.root_quat_w.cpu().numpy()[0, :]) # Get the orienation quaternion from the first environment
         elif obj_type == "frame_transformer":
             print(self.env.unwrapped.scene[obj_name].data)
             obj_pos = self.env.unwrapped.scene[obj_name].data.target_pos_w[0, 0, :].cpu().numpy()

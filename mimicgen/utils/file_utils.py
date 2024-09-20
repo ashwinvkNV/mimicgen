@@ -258,43 +258,44 @@ def write_demo_to_hdf5(
 
     # write actions
     ep_data_grp.create_dataset("actions", data=np.array(actions))
+    ep_data_grp.create_dataset("initial_state", data=initial_state.cpu().numpy())
 
-    # write simulator states
-    if isinstance(states[0], dict):
-        states = TensorUtils.list_of_flat_dict_to_dict_of_list(states)
-        for k in states:
-            ep_data_grp.create_dataset("states/{}".format(k), data=np.array(states[k]))
-    else:
-        ep_data_grp.create_dataset("states", data=np.array(states))
+    # # write simulator states
+    # if isinstance(states[0], dict):
+    #     states = TensorUtils.list_of_flat_dict_to_dict_of_list(states)
+    #     for k in states:
+    #         ep_data_grp.create_dataset("states/{}".format(k), data=np.array(states[k]))
+    # else:
+    #     ep_data_grp.create_dataset("states", data=np.array(states))
 
-    # write observations
-    obs = TensorUtils.list_of_flat_dict_to_dict_of_list(observations)
-    for k in obs:
-        ep_data_grp.create_dataset("obs/{}".format(k), data=np.array(obs[k]), compression="gzip")
+    # # write observations
+    # obs = TensorUtils.list_of_flat_dict_to_dict_of_list(observations)
+    # for k in obs:
+    #     ep_data_grp.create_dataset("obs/{}".format(k), data=np.array(obs[k]), compression="gzip")
 
-    # write datagen info
-    datagen_info = TensorUtils.list_of_flat_dict_to_dict_of_list([x.to_dict() for x in datagen_info])
-    for k in datagen_info:
-        if k in ["object_poses", "subtask_term_signals"]:
-            # convert list of dict to dict of list again
-            datagen_info[k] = TensorUtils.list_of_flat_dict_to_dict_of_list(datagen_info[k])
-            for k2 in datagen_info[k]:
-                datagen_info[k][k2] = np.array(datagen_info[k][k2])
-                ep_data_grp.create_dataset("datagen_info/{}/{}".format(k, k2), data=np.array(datagen_info[k][k2]))
-        else:
-            ep_data_grp.create_dataset("datagen_info/{}".format(k), data=np.array(datagen_info[k]))
+    # # write datagen info
+    # datagen_info = TensorUtils.list_of_flat_dict_to_dict_of_list([x.to_dict() for x in datagen_info])
+    # for k in datagen_info:
+    #     if k in ["object_poses", "subtask_term_signals"]:
+    #         # convert list of dict to dict of list again
+    #         datagen_info[k] = TensorUtils.list_of_flat_dict_to_dict_of_list(datagen_info[k])
+    #         for k2 in datagen_info[k]:
+    #             datagen_info[k][k2] = np.array(datagen_info[k][k2])
+    #             ep_data_grp.create_dataset("datagen_info/{}/{}".format(k, k2), data=np.array(datagen_info[k][k2]))
+    #     else:
+    #         ep_data_grp.create_dataset("datagen_info/{}".format(k), data=np.array(datagen_info[k]))
 
-    # maybe write which source demonstrations generated this episode
-    if src_demo_inds is not None:
-        ep_data_grp.create_dataset("src_demo_inds", data=np.array(src_demo_inds))
-    if src_demo_labels is not None:
-        ep_data_grp.create_dataset("src_demo_labels", data=np.array(src_demo_labels))
+    # # maybe write which source demonstrations generated this episode
+    # if src_demo_inds is not None:
+    #     ep_data_grp.create_dataset("src_demo_inds", data=np.array(src_demo_inds))
+    # if src_demo_labels is not None:
+    #     ep_data_grp.create_dataset("src_demo_labels", data=np.array(src_demo_labels))
 
-    # episode metadata
-    if ("model" in initial_state) and (initial_state["model"] is not None):
-        # only for robosuite envs
-        ep_data_grp.attrs["model_file"] = initial_state["model"] # model xml for this episode
-    ep_data_grp.attrs["num_samples"] = actions.shape[0] # number of transitions in this episode
+    # # episode metadata
+    # if ("model" in initial_state) and (initial_state["model"] is not None):
+    #     # only for robosuite envs
+    #     ep_data_grp.attrs["model_file"] = initial_state["model"] # model xml for this episode
+    # ep_data_grp.attrs["num_samples"] = actions.shape[0] # number of transitions in this episode
 
     # global metadata
     data_grp.attrs["total"] = actions.shape[0]
