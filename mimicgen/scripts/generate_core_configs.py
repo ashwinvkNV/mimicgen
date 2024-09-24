@@ -61,6 +61,7 @@ BASE_CONFIGS = [
     os.path.join(BASE_BASE_CONFIG_PATH, "mug_cleanup.json"),
     os.path.join(BASE_BASE_CONFIG_PATH, "kitchen.json"),
     os.path.join(BASE_BASE_CONFIG_PATH_ISAAC_LAB, "pick_place.json"),
+    os.path.join(BASE_BASE_CONFIG_PATH_ISAAC_LAB, "stack.json"),
 ]
 
 
@@ -241,6 +242,20 @@ def make_generators(base_configs):
             # selection_strategy_kwargs=dict(nn_k=3),
             subtask_term_offset_range=[[10, 20], None],
         ),
+        # stack
+        dict(
+            dataset_path=os.path.join(SRC_DATA_DIR, "stack.hdf5"),
+            dataset_name="stack_isaac_lab",
+            generation_path="{}/stack".format(OUTPUT_FOLDER),
+            # task_interface="MG_PickPlace",
+            tasks=["Stack_D0"],
+            task_names=["D0"],
+            select_src_per_subtask=True,
+            # NOTE: selection strategy is set by default in the config template, and we will not change it
+            # selection_strategy="nearest_neighbor_object",
+            # selection_strategy_kwargs=dict(nn_k=3),
+            subtask_term_offset_range=[None, None, None, None],
+        ),
     ]
 
     assert len(base_configs) == len(all_settings)
@@ -288,7 +303,7 @@ def make_generator(config_file, settings):
         selection_strategy=settings.get("selection_strategy", None),
         selection_strategy_kwargs=settings.get("selection_strategy_kwargs", None),
         # default settings: action noise 0.05, with 5 interpolation steps
-        action_noise=0.05,
+        action_noise=0.0,
         num_interpolation_steps=5,
         num_fixed_steps=0,
         verbose=False,

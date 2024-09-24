@@ -13,6 +13,8 @@ import robosuite.utils.transform_utils as T
 import mimicgen.utils.pose_utils as PoseUtils
 from mimicgen.env_interfaces.base import MG_EnvInterface
 
+import torch
+
 
 class IsaacLabInterface(MG_EnvInterface):
     """
@@ -135,7 +137,6 @@ class IsaacLabInterface(MG_EnvInterface):
             obj_pos = np.array(self.env.unwrapped.scene[obj_name].data.root_pos_w.cpu().numpy()[0, :]) # Get the pose from the first environment
             obj_rot = np.array(self.env.unwrapped.scene[obj_name].data.root_quat_w.cpu().numpy()[0, :]) # Get the orienation quaternion from the first environment
         elif obj_type == "frame_transformer":
-            print(self.env.unwrapped.scene[obj_name].data)
             obj_pos = self.env.unwrapped.scene[obj_name].data.target_pos_w[0, 0, :].cpu().numpy()
             obj_rot = self.env.unwrapped.scene[obj_name].data.target_quat_w[0, 0, :].cpu().numpy()
         elif obj_type == "sensor":
@@ -183,6 +184,82 @@ class MG_PickPlace(IsaacLabInterface):
         else:
             signals["picked"] = 0
 
+        # final subtask is placing cubeC on cubeA (motion relative to cubeA) - but final subtask signal is not needed
+        return signals
+
+class MG_Stack(IsaacLabInterface):
+    """
+    Corresponds to robosuite StackThree task and variants.
+    """
+    def get_object_poses(self):
+        """
+        Gets the pose of each object relevant to MimicGen data generation in the current scene.
+
+        Returns:
+            object_poses (dict): dictionary that maps object name (str) to object pose matrix (4x4 np.array)
+        """
+        # three relevant objects - three cubes
+        return dict(
+            cube_1=self.get_object_pose(obj_name="cube_1", obj_type="asset"),
+            cube_2=self.get_object_pose(obj_name="cube_2", obj_type="asset"),
+            cube_3=self.get_object_pose(obj_name="cube_3", obj_type="asset")
+        )
+
+    def cube_2_picked(self,
+        height_threshold: float = 0.005,
+    ):
+        cube_1: RigidObject = self.env.unwrapped.scene["cube_1"]
+        cube_2: RigidObject = self.env.unwrapped.scene["cube_2"]
+        pos_diff_c12 = cube_1.data.root_pos_w - cube_2.data.root_pos_w
+        h_dist_c12 = torch.norm(pos_diff_c12[:, 2:], dim=1)
+        return (torch.norm(h_dist_c12) > height_threshold).item()
+    
+    def cube_3_picked(self,
+        height_threshold: float = 0.005,
+    ):
+        cube_1: RigidObject = self.env.unwrapped.scene["cube_1"]
+        cube_3: RigidObject = self.env.unwrapped.scene["cube_3"]
+        pos_diff_c13 = cube_1.data.root_pos_w - cube_3.data.root_pos_w
+        h_dist_c13 = torch.norm(pos_diff_c13[:, 2:], dim=1)
+        return (torch.norm(h_dist_c13) > height_threshold).item()
+    
+    def cube_2_stacked(self,
+        xy_threshold: float = 0.03,
+        height_threshold: float = 0.005,
+        height_diff: float = 0.0468,
+    ):
+        cube_1: RigidObject = self.env.unwrapped.scene["cube_1"]
+        cube_2: RigidObject = self.env.unwrapped.scene["cube_2"]
+        pos_diff_c12 = cube_1.data.root_pos_w - cube_2.data.root_pos_w
+        h_dist_c12 = torch.norm(pos_diff_c12[:, 2:], dim=1)
+        xy_dist_c12 = torch.norm(pos_diff_c12[:, :2], dim=1)
+        stacked = torch.logical_and(xy_dist_c12 < xy_threshold, torch.norm(h_dist_c12 - height_diff) < height_threshold)
+        return (stacked).item()
+
+    def get_subtask_term_signals(self):
+        """
+        Gets a dictionary of binary flags for each subtask in a task. The flag is 1
+        when the subtask has been completed and 0 otherwise. MimicGen only uses this
+        when parsing source demonstrations at the start of data generation, and it only
+        uses the first 0 -> 1 transition in this signal to detect the end of a subtask.
+        Returns:
+            subtask_term_signals (dict): dictionary that maps subtask name to termination flag (0 or 1)
+        """
+        signals = dict()
+        
+        if self.cube_2_picked():
+            signals["cube_2_picked"] = 1
+        else:
+            signals["cube_2_picked"] = 0
+        if self.cube_3_picked():
+            signals["cube_3_picked"] = 1
+        else:
+            signals["cube_3_picked"] = 0
+        if self.cube_2_stacked():
+            signals["cube_2_stacked"] = 1
+        else:
+            signals["cube_2_stacked"] = 0
+        print(signals)
         # final subtask is placing cubeC on cubeA (motion relative to cubeA) - but final subtask signal is not needed
         return signals
 

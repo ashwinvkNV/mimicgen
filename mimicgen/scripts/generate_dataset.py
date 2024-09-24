@@ -255,6 +255,8 @@ def generate_dataset(
         env_interface_name = mg_config.experiment.task.interface
     if mg_config.experiment.task.interface_type is not None:
         env_interface_type = mg_config.experiment.task.interface_type
+    # TODO: This should be set correctly in the recording
+    env_interface_name = 'MG_Stack'
 
     # create environment interface to use during data generation
     env_interface = make_interface(
