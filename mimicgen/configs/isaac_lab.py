@@ -95,7 +95,7 @@ class Stack_Config(MG_Config):
             # to the key in "datagen_info" that should be used to infer when this subtask 
             # is finished (e.g. on a 0 to 1 edge of the binary indicator). Should provide 
             # None for the final subtask.
-            subtask_term_signal="cube_2_picked",
+            subtask_term_signal="grasp_1",
             # if not None, specifies time offsets to be used during data generation when splitting 
             # a trajectory into subtask segments. On each data generation attempt, an offset is sampled
             # and added to the boundary defined by @subtask_term_signal.
@@ -126,7 +126,7 @@ class Stack_Config(MG_Config):
             # to the key in "datagen_info" that should be used to infer when this subtask 
             # is finished (e.g. on a 0 to 1 edge of the binary indicator). Should provide 
             # None for the final subtask.
-            subtask_term_signal="cube_2_stacked",
+            subtask_term_signal="grasp_2",
             # if not None, specifies time offsets to be used during data generation when splitting 
             # a trajectory into subtask segments. On each data generation attempt, an offset is sampled
             # and added to the boundary defined by @subtask_term_signal.
@@ -157,7 +157,7 @@ class Stack_Config(MG_Config):
             # to the key in "datagen_info" that should be used to infer when this subtask 
             # is finished (e.g. on a 0 to 1 edge of the binary indicator). Should provide 
             # None for the final subtask.
-            subtask_term_signal="cube_3_picked",
+            subtask_term_signal="stack_1",
             # if not None, specifies time offsets to be used during data generation when splitting 
             # a trajectory into subtask segments. On each data generation attempt, an offset is sampled
             # and added to the boundary defined by @subtask_term_signal.

@@ -205,36 +205,69 @@ class MG_Stack(IsaacLabInterface):
             cube_3=self.get_object_pose(obj_name="cube_3", obj_type="asset")
         )
 
-    def cube_2_picked(self,
-        height_threshold: float = 0.005,
-    ):
-        cube_1: RigidObject = self.env.unwrapped.scene["cube_1"]
-        cube_2: RigidObject = self.env.unwrapped.scene["cube_2"]
-        pos_diff_c12 = cube_1.data.root_pos_w - cube_2.data.root_pos_w
-        h_dist_c12 = torch.norm(pos_diff_c12[:, 2:], dim=1)
-        return (torch.norm(h_dist_c12) > height_threshold).item()
+    def grasp_1(self,
+        diff_threshold: float = 0.04
+    ) -> torch.Tensor:
+        """Check if an object is grapsed."""
+
+        focused_oject: RigidObject = self.env.unwrapped.scene["cube_2"]
+        focused_oject_pose = focused_oject.data.root_pos_w
+
+        end_effecotr: FrameTransformer = self.env.unwrapped.scene['ee_frame']
+        end_effecotr_pose = end_effecotr.data.target_pos_w
+
+        pose_diff = torch.norm(torch.norm(focused_oject_pose - end_effecotr_pose, dim=1), dim=1)
+
+        gripper_closed = self.env.unwrapped.action_manager.action[:, -1] < 0 # -1: close, 1: open
+
+        # print('object grasp_1: ', torch.logical_and(pose_diff < diff_threshold, gripper_closed))
+
+        return torch.logical_and(pose_diff < diff_threshold, gripper_closed)
+
     
-    def cube_3_picked(self,
-        height_threshold: float = 0.005,
-    ):
-        cube_1: RigidObject = self.env.unwrapped.scene["cube_1"]
-        cube_3: RigidObject = self.env.unwrapped.scene["cube_3"]
-        pos_diff_c13 = cube_1.data.root_pos_w - cube_3.data.root_pos_w
-        h_dist_c13 = torch.norm(pos_diff_c13[:, 2:], dim=1)
-        return (torch.norm(h_dist_c13) > height_threshold).item()
+    def grasp_2(self,
+        diff_threshold: float = 0.04
+    ) -> torch.Tensor:
+        """Check if an object is grapsed."""
+
+        focused_oject: RigidObject = self.env.unwrapped.scene["cube_3"]
+        focused_oject_pose = focused_oject.data.root_pos_w
+
+        end_effecotr: FrameTransformer = self.env.unwrapped.scene['ee_frame']
+        end_effecotr_pose = end_effecotr.data.target_pos_w
+
+        pose_diff = torch.norm(torch.norm(focused_oject_pose - end_effecotr_pose, dim=1), dim=1)
+
+        gripper_closed = self.env.unwrapped.action_manager.action[:, -1] < 0 # -1: close, 1: open
+
+        # print('object grasp_2: ', torch.logical_and(pose_diff < diff_threshold, gripper_closed))
+
+        return torch.logical_and(pose_diff < diff_threshold, gripper_closed)
     
-    def cube_2_stacked(self,
-        xy_threshold: float = 0.03,
+    def stack_1(self,
+        xy_threshold: float = 0.04,
         height_threshold: float = 0.005,
         height_diff: float = 0.0468,
-    ):
-        cube_1: RigidObject = self.env.unwrapped.scene["cube_1"]
-        cube_2: RigidObject = self.env.unwrapped.scene["cube_2"]
-        pos_diff_c12 = cube_1.data.root_pos_w - cube_2.data.root_pos_w
-        h_dist_c12 = torch.norm(pos_diff_c12[:, 2:], dim=1)
-        xy_dist_c12 = torch.norm(pos_diff_c12[:, :2], dim=1)
-        stacked = torch.logical_and(xy_dist_c12 < xy_threshold, torch.norm(h_dist_c12 - height_diff) < height_threshold)
-        return (stacked).item()
+    ) -> torch.Tensor:
+        """Check if an object is grapsed."""
+
+        focused_oject: RigidObject = self.env.unwrapped.scene["cube_1"]
+        focused_oject_pose = focused_oject.data.root_pos_w
+
+        target_oject: RigidObject = self.env.unwrapped.scene["cube_2"]
+        target_oject_pose = target_oject.data.root_pos_w
+
+        pose_diff = focused_oject_pose - target_oject_pose
+        height_distance = torch.norm(pose_diff[:, 2:], dim=1)
+        xy_distance = torch.norm(pose_diff[:, :2], dim=1)
+        stacked = torch.logical_and(xy_distance < xy_threshold, torch.norm(height_distance - height_diff) < height_threshold)
+
+        gripper_closed = self.env.unwrapped.action_manager.action[:, -1] < 0 # -1: close, 1: open
+        return torch.logical_and(stacked, gripper_closed)
+
+        print('object stacked: ', torch.logical_and(stacked, gripper_closed))
+
+        return stacked
 
     def get_subtask_term_signals(self):
         """
@@ -247,19 +280,18 @@ class MG_Stack(IsaacLabInterface):
         """
         signals = dict()
         
-        if self.cube_2_picked():
-            signals["cube_2_picked"] = 1
+        if self.grasp_1():
+            signals["grasp_1"] = 1
         else:
-            signals["cube_2_picked"] = 0
-        if self.cube_3_picked():
-            signals["cube_3_picked"] = 1
+            signals["grasp_1"] = 0
+        if self.grasp_2():
+            signals["grasp_2"] = 1
         else:
-            signals["cube_3_picked"] = 0
-        if self.cube_2_stacked():
-            signals["cube_2_stacked"] = 1
+            signals["grasp_2"] = 0
+        if self.stack_1():
+            signals["stack_1"] = 1
         else:
-            signals["cube_2_stacked"] = 0
-        print(signals)
+            signals["stack_1"] = 0
         # final subtask is placing cubeC on cubeA (motion relative to cubeA) - but final subtask signal is not needed
         return signals
 
