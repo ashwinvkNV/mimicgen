@@ -18,6 +18,8 @@ from mimicgen.datagen.datagen_info import DatagenInfo
 from mimicgen.datagen.selection_strategy import make_selection_strategy
 from mimicgen.datagen.waypoint import WaypointSequence, WaypointTrajectory
 
+import matplotlib.pyplot as plt
+
 
 class DataGenerator(object):
     """
@@ -240,7 +242,7 @@ class DataGenerator(object):
 
         # sample new task instance
         env.reset()
-        new_initial_state = env.env.state
+        new_initial_state = env.state
 
         # sample new subtask boundaries
         all_subtask_inds = self.randomize_subtask_boundaries() # shape [N, S, 2], last dim is start and end action lengths

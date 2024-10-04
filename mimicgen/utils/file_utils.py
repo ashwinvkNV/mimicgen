@@ -256,9 +256,34 @@ def write_demo_to_hdf5(
     # single episode
     ep_data_grp = data_grp.create_group("demo_0")
 
+    # Convert tensors to numpy arrays
+    initial_state_numpy = {
+        key: {sub_key: value.cpu().numpy() for sub_key, value in sub_dict.items()}
+        for key, sub_dict in initial_state.items()
+    }
+
     # write actions
     ep_data_grp.create_dataset("actions", data=np.array(actions))
-    ep_data_grp.create_dataset("initial_state", data=initial_state.cpu().numpy())
+
+    for category, items in initial_state_numpy.items():
+        for item_name, item_data in items.items():
+            ep_data_grp.create_dataset(f'initial_state/{category}/{item_name}', data=item_data)
+
+    # List to store all observation arrays
+    obs_arrays = {}
+
+    # Loop through each object in data
+    # TODO: Why is the first observation different from the rest?
+    for obs_ind in range(len(observations)):
+        obs = observations[obs_ind]
+        print(obs)
+        for key, value in obs['policy'].items():
+            if key not in obs_arrays:
+                obs_arrays[key] = []
+            obs_arrays[key].append(value.cpu().numpy()[0])
+
+    for key, value in obs_arrays.items():
+        ep_data_grp.create_dataset(f'obs/{key}', data=value)
 
     # # write simulator states
     # if isinstance(states[0], dict):
@@ -295,7 +320,7 @@ def write_demo_to_hdf5(
     # if ("model" in initial_state) and (initial_state["model"] is not None):
     #     # only for robosuite envs
     #     ep_data_grp.attrs["model_file"] = initial_state["model"] # model xml for this episode
-    # ep_data_grp.attrs["num_samples"] = actions.shape[0] # number of transitions in this episode
+    ep_data_grp.attrs["num_samples"] = actions.shape[0] # number of transitions in this episode
 
     # global metadata
     data_grp.attrs["total"] = actions.shape[0]
