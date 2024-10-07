@@ -362,6 +362,26 @@ class DataGenerator(object):
                 action_noise=(float(self.task_spec[subtask_ind]["apply_noise_during_interpolation"]) * self.task_spec[subtask_ind]["action_noise"]),
             )
 
+            # traj_to_execute_poses = traj_to_execute.get_poses()
+
+            # print('traj_to_execute_poses orentations')
+            # print(traj_to_execute_poses)
+
+            # # Extract x and y coordinates
+            # x_coords = [pose[0] for pose in traj_to_execute_poses]
+            # y_coords = [pose[1] for pose in traj_to_execute_poses]
+
+            # # Plotting
+            # plt.figure(figsize=(8, 6))
+            # plt.plot(x_coords, y_coords, marker='o', linestyle='-', color='b', markersize=8)
+            # plt.title('Waypoints Plot')
+            # plt.xlabel('X Coordinate')
+            # plt.ylabel('Y Coordinate')
+            # plt.grid()
+            # plt.axis('equal')  # To maintain the aspect ratio
+            # plt.show()
+
+
             # We initialized @traj_to_execute with a pose to allow @merge to handle linear interpolation
             # for us. However, we can safely discard that first waypoint now, and just start by executing
             # the rest of the trajectory (interpolation segment and transformed subtask segment).

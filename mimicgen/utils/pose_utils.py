@@ -10,9 +10,6 @@ import math
 import collections
 import numpy as np
 
-import robosuite
-import robosuite.utils.transform_utils as T
-
 
 def make_pose(pos, rot):
     """
@@ -121,18 +118,16 @@ def quat2axisangle(quat):
 
 def quat2mat(quat):
     """
-    Converts a (w, x, y, z) quaternion to a 3x3 rotation matrix.
-
+    Converts a (x, y, z, w) quaternion to a 3x3 rotation matrix.
     Args:
         quat (np.array): A 4-element array representing the quaternion (x, y, z, w).
-
     Returns:
         np.array: A 3x3 rotation matrix.
     """
     # Normalize quaternion
     q = quat / np.linalg.norm(quat)
 
-    w, x, y, z = q
+    x, y, z, w = q
 
     # Compute the rotation matrix components
     R = np.array([
@@ -189,6 +184,46 @@ def quat_slerp(q1, q2, tau):
     q1 = q1 + q2
     return q1
 
+def mat2quat(rmat):
+    """
+    Converts given rotation matrix to quaternion.
+
+    Args:
+        rmat (np.array): 3x3 rotation matrix
+
+    Returns:
+        np.array: (x,y,z,w) float quaternion angles
+    """
+    M = np.asarray(rmat).astype(np.float32)[:3, :3]
+
+    m00 = M[0, 0]
+    m01 = M[0, 1]
+    m02 = M[0, 2]
+    m10 = M[1, 0]
+    m11 = M[1, 1]
+    m12 = M[1, 2]
+    m20 = M[2, 0]
+    m21 = M[2, 1]
+    m22 = M[2, 2]
+    # symmetric matrix K
+    K = np.array(
+        [
+            [m00 - m11 - m22, np.float32(0.0), np.float32(0.0), np.float32(0.0)],
+            [m01 + m10, m11 - m00 - m22, np.float32(0.0), np.float32(0.0)],
+            [m02 + m20, m12 + m21, m22 - m00 - m11, np.float32(0.0)],
+            [m21 - m12, m02 - m20, m10 - m01, m00 + m11 + m22],
+        ]
+    )
+    K /= 3.0
+    # quaternion is Eigen vector of K that corresponds to largest eigenvalue
+    w, V = np.linalg.eigh(K)
+    inds = np.array([3, 0, 1, 2])
+    q1 = V[inds, np.argmax(w)]
+    if q1[0] < 0.0:
+        np.negative(q1, q1)
+    inds = np.array([1, 2, 3, 0])
+    return q1[inds]
+
 
 def interpolate_rotations(R1, R2, num_steps, axis_angle=True):
     """
@@ -200,7 +235,7 @@ def interpolate_rotations(R1, R2, num_steps, axis_angle=True):
     if axis_angle:
         # delta rotation expressed as axis-angle
         delta_rot_mat = R2.dot(R1.T)
-        delta_quat = T.mat2quat(delta_rot_mat)
+        delta_quat = mat2quat(delta_rot_mat)
         delta_axis, delta_angle = quat2axisangle(delta_quat)
 
         # fix the axis, and chunk the angle up into steps
@@ -211,12 +246,12 @@ def interpolate_rotations(R1, R2, num_steps, axis_angle=True):
             # small angle - don't bother with interpolation
             rot_steps = np.array([R2 for _ in range(num_steps)])
         else:
-            delta_rot_steps = [T.quat2mat(axisangle2quat(delta_axis, i * rot_step_size)) for i in range(num_steps)]
+            delta_rot_steps = [quat2mat(axisangle2quat(delta_axis, i * rot_step_size)) for i in range(num_steps)]
             rot_steps = np.array([delta_rot_steps[i].dot(R1) for i in range(num_steps)])
     else:
-        q1 = T.mat2quat(R1)
-        q2 = T.mat2quat(R2)
-        rot_steps = np.array([T.quat2mat(quat_slerp(q1, q2, tau=(float(i) / num_steps))) for i in range(num_steps)])
+        q1 = mat2quat(R1)
+        q2 = mat2quat(R2)
+        rot_steps = np.array([quat2mat(quat_slerp(q1, q2, tau=(float(i) / num_steps))) for i in range(num_steps)])
     
     # add in endpoint
     rot_steps = np.concatenate([rot_steps, R2[None]], axis=0)

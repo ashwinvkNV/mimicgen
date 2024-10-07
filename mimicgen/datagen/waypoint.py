@@ -14,6 +14,9 @@ import mimicgen.utils.pose_utils as PoseUtils
 
 import torch
 
+# import matplotlib.pyplot as plt
+
+
 class Waypoint(object):
     """
     Represents a single desired 6-DoF waypoint, along with corresponding gripper actuation for this point.
@@ -380,6 +383,25 @@ class WaypointTrajectory(object):
 
         # iterate over waypoint sequences
         for seq in self.waypoint_sequences:
+            
+            # poses = []
+
+            # for waypoint in seq:
+            #     poses.append(waypoint.pose[:2,3])
+
+            # # Extract x and y coordinates
+            # x_coords = [pose[0] for pose in poses]
+            # y_coords = [pose[1] for pose in poses]
+
+            # # Plotting
+            # plt.figure(figsize=(8, 6))
+            # plt.plot(x_coords, y_coords, marker='o', linestyle='-', color='b', markersize=8)
+            # plt.title('Waypoints Plot')
+            # plt.xlabel('X Coordinate')
+            # plt.ylabel('Y Coordinate')
+            # plt.grid()
+            # plt.axis('equal')  # To maintain the aspect ratio
+            # plt.show()
 
             # iterate over waypoints in each sequence
             for j in range(len(seq)):

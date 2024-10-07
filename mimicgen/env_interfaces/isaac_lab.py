@@ -7,9 +7,6 @@ MimicGen environment interface classes for basic isaac_lab environments.
 """
 import numpy as np
 
-import robosuite
-import robosuite.utils.transform_utils as T
-
 import mimicgen.utils.pose_utils as PoseUtils
 from mimicgen.env_interfaces.base import MG_EnvInterface
 
@@ -51,9 +48,6 @@ class IsaacLabInterface(MG_EnvInterface):
             action (np.array): action compatible with env.step (minus gripper actuation)
         """
 
-        # version check for robosuite - must be v1.2+, so that we're using the correct controller convention
-        assert (robosuite.__version__.split(".")[0] == "1")
-        assert (robosuite.__version__.split(".")[1] >= "2")
 
         # target position and rotation
         target_pos, target_rot = PoseUtils.unmake_pose(target_pose)
@@ -69,8 +63,13 @@ class IsaacLabInterface(MG_EnvInterface):
 
             # normalized delta rotation action
             delta_rot_mat = target_rot.dot(curr_rot.T)
-            delta_quat = T.mat2quat(delta_rot_mat)
-            delta_rotation = T.quat2axisangle(delta_quat)
+            delta_quat = PoseUtils.mat2quat(delta_rot_mat)
+            delta_rotation_axis, delta_rotation_angle = PoseUtils.quat2axisangle(delta_quat)
+
+            # quat2axisangle returns both axis and angle, not axis * angle
+            # We want delta_rotation to represent axis * angle so we multiple the two together
+            delta_rotation = delta_rotation_axis *delta_rotation_angle
+
             # delta_rotation = np.clip(delta_rotation / max_drot, -1., 1.)
             return np.concatenate([delta_position, delta_rotation])
 
@@ -97,8 +96,14 @@ class IsaacLabInterface(MG_EnvInterface):
 
         # get pose target
         target_pos = curr_pos + delta_position
-        delta_quat = T.axisangle2quat(delta_rotation)
-        delta_rot_mat = T.quat2mat(delta_quat)
+
+        # Convert delta_rotation to axis angle form
+        delta_rotation_angle = np.linalg.norm(delta_rotation)
+        # make sure that axis is a unit vector
+        delta_rotation_axis = delta_rotation / delta_rotation_angle
+        delta_quat = PoseUtils.axisangle2quat(delta_rotation_axis, delta_rotation_angle)
+        delta_rot_mat = PoseUtils.quat2mat(delta_quat)
+
         target_rot = delta_rot_mat.dot(curr_rot)
 
         target_pose = PoseUtils.make_pose(target_pos, target_rot)
@@ -144,7 +149,8 @@ class IsaacLabInterface(MG_EnvInterface):
         else:
             raise NotImplementedError(f"Object type '{obj_type}' is not implemented.")
         
-        return PoseUtils.make_pose(obj_pos, PoseUtils.quat2mat(obj_rot))
+        # convert from w,x,y,z to x,y,z,w
+        return PoseUtils.make_pose(obj_pos, quat2mat(np.array([obj_rot[1], obj_rot[2], obj_rot[3], obj_rot[0]])))
 
 
 class MG_PickPlace(IsaacLabInterface):
