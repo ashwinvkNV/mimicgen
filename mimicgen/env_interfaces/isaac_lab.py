@@ -150,7 +150,7 @@ class IsaacLabInterface(MG_EnvInterface):
             raise NotImplementedError(f"Object type '{obj_type}' is not implemented.")
         
         # convert from w,x,y,z to x,y,z,w
-        return PoseUtils.make_pose(obj_pos, quat2mat(np.array([obj_rot[1], obj_rot[2], obj_rot[3], obj_rot[0]])))
+        return PoseUtils.make_pose(obj_pos, PoseUtils.quat2mat(np.array([obj_rot[1], obj_rot[2], obj_rot[3], obj_rot[0]])))
 
 
 class MG_PickPlace(IsaacLabInterface):
