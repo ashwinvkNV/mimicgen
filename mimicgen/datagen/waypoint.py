@@ -12,6 +12,10 @@ from copy import deepcopy
 import mimicgen
 import mimicgen.utils.pose_utils as PoseUtils
 
+import torch
+
+# import matplotlib.pyplot as plt
+
 
 class Waypoint(object):
     """
@@ -29,6 +33,13 @@ class Waypoint(object):
         self.gripper_action = np.array(gripper_action)
         self.noise = noise
         assert len(self.gripper_action.shape) == 1
+    
+    def __str__(self):
+        """String representation of the waypoint."""
+        return (f"Waypoint:\n"
+                f"  Pose:\n{self.pose}\n")
+                # f"  Gripper Action: {self.gripper_action}\n"
+                # f"  Noise: {self.noise if self.noise is not None else 'None'}")
 
 
 class WaypointSequence(object):
@@ -81,6 +92,12 @@ class WaypointSequence(object):
         ]
         return cls(sequence=sequence)
 
+    def get_poses(self):
+        poses = []
+        for waypoint in self.sequence:
+            poses.append(waypoint.pose[:2,3])
+        return poses
+
     def __len__(self):
         # length of sequence
         return len(self.sequence)
@@ -99,6 +116,13 @@ class WaypointSequence(object):
         Defines addition (concatenation) of sequences
         """
         return WaypointSequence(sequence=(self.sequence + other.sequence))
+    
+    def __str__(self):
+        """Prints all waypoints in the sequence."""
+        output = []
+        for idx, waypoint in enumerate(self.sequence):
+            output.append(f"Waypoint {idx}: {waypoint}")
+        return "\n".join(output)
 
     @property
     def last_waypoint(self):
@@ -161,6 +185,13 @@ class WaypointTrajectory(object):
             waypoint (Waypoint instance)
         """
         return self.waypoint_sequences[-1].last_waypoint
+
+    def get_poses(self):
+        poses = []
+        for waypoint_sequence in self.waypoint_sequences:
+            for waypoint in waypoint_sequence:
+                poses.append(waypoint.pose[:2,3])
+        return poses
 
     def add_waypoint_sequence(self, sequence):
         """
@@ -352,6 +383,25 @@ class WaypointTrajectory(object):
 
         # iterate over waypoint sequences
         for seq in self.waypoint_sequences:
+            
+            # poses = []
+
+            # for waypoint in seq:
+            #     poses.append(waypoint.pose[:2,3])
+
+            # # Extract x and y coordinates
+            # x_coords = [pose[0] for pose in poses]
+            # y_coords = [pose[1] for pose in poses]
+
+            # # Plotting
+            # plt.figure(figsize=(8, 6))
+            # plt.plot(x_coords, y_coords, marker='o', linestyle='-', color='b', markersize=8)
+            # plt.title('Waypoints Plot')
+            # plt.xlabel('X Coordinate')
+            # plt.ylabel('Y Coordinate')
+            # plt.grid()
+            # plt.axis('equal')  # To maintain the aspect ratio
+            # plt.show()
 
             # iterate over waypoints in each sequence
             for j in range(len(seq)):
@@ -374,8 +424,7 @@ class WaypointTrajectory(object):
                 waypoint = seq[j]
 
                 # current state and obs
-                state = env.get_state()["states"]
-                obs = env.get_observation()
+                obs = env.obs_buf
 
                 # convert target pose to arm action
                 action_pose = env_interface.target_pose_to_action(target_pose=waypoint.pose)
@@ -392,10 +441,14 @@ class WaypointTrajectory(object):
                 datagen_info = env_interface.get_datagen_info(action=play_action)
 
                 # step environment
+                if not isinstance(play_action, torch.Tensor):
+                    play_action = torch.tensor(play_action)
+                if play_action.dim() == 1 and play_action.size(0) == 7:
+                    play_action = play_action.unsqueeze(0)  # Reshape to [1, 7]
                 env.step(play_action)
 
                 # collect data
-                states.append(state)
+                states.append(env.state)
                 play_action_record = play_action
                 actions.append(play_action_record)
                 observations.append(obs)

@@ -24,6 +24,7 @@ Examples:
 """
 
 import os
+import h5py
 import shutil
 import json
 import time
@@ -44,6 +45,9 @@ import mimicgen.utils.robomimic_utils as RobomimicUtils
 from mimicgen.configs import config_factory, MG_TaskSpec
 from mimicgen.datagen.data_generator import DataGenerator
 from mimicgen.env_interfaces.base import make_interface
+
+import gymnasium as gym
+from omni.isaac.lab.utils.io import load_pickle
 
 
 def get_important_stats(
@@ -225,25 +229,10 @@ def generate_dataset(
     # env args: don't use image obs when writing debug video
     use_image_obs = ((mg_config.obs.collect_obs and (len(mg_config.obs.camera_names) > 0)) if not write_video else False)
     use_depth_obs = False
-    
-    # simulation environment
-    env = RobomimicUtils.create_env(
-        env_meta=env_meta,
-        env_class=None,
-        env_name=mg_config.experiment.task.name,
-        robot=mg_config.experiment.task.robot,
-        gripper=mg_config.experiment.task.gripper,
-        camera_names=camera_names,
-        camera_height=mg_config.obs.camera_height,
-        camera_width=mg_config.obs.camera_width,
-        render=render, 
-        render_offscreen=write_video,
-        use_image_obs=use_image_obs,
-        use_depth_obs=use_depth_obs,
-    )
-    print("\n==== Using environment with the following metadata ====")
-    print(json.dumps(env.serialize(), indent=4))
-    print("")
+
+    # create environment from loaded config
+    env_cfg = load_pickle(os.path.join("/home/ashwin/git_cloned/IsaacLab-Internal/logs/robomimic/Isaac-Stack-Cube-Franka-IK-Rel-v0/params", "env.pkl"))
+    env = gym.make('Isaac-Stack-Cube-Franka-IK-Rel-v0', cfg=env_cfg)
 
     # get information necessary to create env interface
     env_interface_name, env_interface_type = MG_FileUtils.get_env_interface_info_from_dataset(
@@ -255,18 +244,21 @@ def generate_dataset(
         env_interface_name = mg_config.experiment.task.interface
     if mg_config.experiment.task.interface_type is not None:
         env_interface_type = mg_config.experiment.task.interface_type
+    # TODO: This should be set correctly in the recording
+    env_interface_name = 'MG_Stack'
 
     # create environment interface to use during data generation
     env_interface = make_interface(
         name=env_interface_name,
         interface_type=env_interface_type,
         # NOTE: env_interface takes underlying simulation environment, not robomimic wrapper
-        env=env.base_env,
+        env=env,
     )
     print("Created environment interface: {}".format(env_interface))
 
-    # make sure we except the same exceptions that we would normally except during policy rollouts
-    exceptions_to_except = env.rollout_exceptions
+    # TODO: make sure okay to remove this
+    # # make sure we except the same exceptions that we would normally except during policy rollouts
+    # exceptions_to_except = env.rollout_exceptions
 
     # get task spec object from config
     task_spec_json_string = mg_config.task.task_spec.dump()
@@ -304,28 +296,29 @@ def generate_dataset(
     while True:
 
         # generate trajectory
-        try:
-            generated_traj = data_generator.generate(
-                env=env,
-                env_interface=env_interface,
-                select_src_per_subtask=mg_config.experiment.generation.select_src_per_subtask,
-                transform_first_robot_pose=mg_config.experiment.generation.transform_first_robot_pose,
-                interpolate_from_last_target_pose=mg_config.experiment.generation.interpolate_from_last_target_pose,
-                render=render,
-                video_writer=video_writer,
-                video_skip=video_skip,
-                camera_names=render_image_names,
-                pause_subtask=pause_subtask,
-            )
-        except exceptions_to_except as e:
-            # problematic trajectory - do not have this count towards our total number of attempts, and re-try
-            print("")
-            print("*" * 50)
-            print("WARNING: got rollout exception {}".format(e))
-            print("*" * 50)
-            print("")
-            num_problematic += 1
-            continue
+        generated_traj = data_generator.generate(
+            env=env,
+            env_interface=env_interface,
+            select_src_per_subtask=mg_config.experiment.generation.select_src_per_subtask,
+            transform_first_robot_pose=mg_config.experiment.generation.transform_first_robot_pose,
+            interpolate_from_last_target_pose=mg_config.experiment.generation.interpolate_from_last_target_pose,
+            render=render,
+            video_writer=video_writer,
+            video_skip=video_skip,
+            camera_names=render_image_names,
+            pause_subtask=pause_subtask,
+        )
+        
+        #TODO: Are rollout exceptions required?
+        # except exceptions_to_except as e:
+        #     # problematic trajectory - do not have this count towards our total number of attempts, and re-try
+        #     print("")
+        #     print("*" * 50)
+        #     print("WARNING: got rollout exception {}".format(e))
+        #     print("*" * 50)
+        #     print("")
+        #     num_problematic += 1
+        #     continue
 
         # remember selection of source demos for each subtask
         selected_src_demo_inds_all.append(generated_traj["src_demo_inds"])

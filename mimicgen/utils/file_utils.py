@@ -256,44 +256,70 @@ def write_demo_to_hdf5(
     # single episode
     ep_data_grp = data_grp.create_group("demo_0")
 
+    # Convert tensors to numpy arrays
+    initial_state_numpy = {
+        key: {sub_key: value.cpu().numpy() for sub_key, value in sub_dict.items()}
+        for key, sub_dict in initial_state.items()
+    }
+
     # write actions
     ep_data_grp.create_dataset("actions", data=np.array(actions))
 
-    # write simulator states
-    if isinstance(states[0], dict):
-        states = TensorUtils.list_of_flat_dict_to_dict_of_list(states)
-        for k in states:
-            ep_data_grp.create_dataset("states/{}".format(k), data=np.array(states[k]))
-    else:
-        ep_data_grp.create_dataset("states", data=np.array(states))
+    for category, items in initial_state_numpy.items():
+        for item_name, item_data in items.items():
+            ep_data_grp.create_dataset(f'initial_state/{category}/{item_name}', data=item_data)
 
-    # write observations
-    obs = TensorUtils.list_of_flat_dict_to_dict_of_list(observations)
-    for k in obs:
-        ep_data_grp.create_dataset("obs/{}".format(k), data=np.array(obs[k]), compression="gzip")
+    # List to store all observation arrays
+    obs_arrays = {}
 
-    # write datagen info
-    datagen_info = TensorUtils.list_of_flat_dict_to_dict_of_list([x.to_dict() for x in datagen_info])
-    for k in datagen_info:
-        if k in ["object_poses", "subtask_term_signals"]:
-            # convert list of dict to dict of list again
-            datagen_info[k] = TensorUtils.list_of_flat_dict_to_dict_of_list(datagen_info[k])
-            for k2 in datagen_info[k]:
-                datagen_info[k][k2] = np.array(datagen_info[k][k2])
-                ep_data_grp.create_dataset("datagen_info/{}/{}".format(k, k2), data=np.array(datagen_info[k][k2]))
-        else:
-            ep_data_grp.create_dataset("datagen_info/{}".format(k), data=np.array(datagen_info[k]))
+    # Loop through each object in data
+    # TODO: Why is the first observation different from the rest?
+    for obs_ind in range(len(observations)):
+        obs = observations[obs_ind]
+        print(obs)
+        for key, value in obs['policy'].items():
+            if key not in obs_arrays:
+                obs_arrays[key] = []
+            obs_arrays[key].append(value.cpu().numpy()[0])
 
-    # maybe write which source demonstrations generated this episode
-    if src_demo_inds is not None:
-        ep_data_grp.create_dataset("src_demo_inds", data=np.array(src_demo_inds))
-    if src_demo_labels is not None:
-        ep_data_grp.create_dataset("src_demo_labels", data=np.array(src_demo_labels))
+    for key, value in obs_arrays.items():
+        ep_data_grp.create_dataset(f'obs/{key}', data=value)
 
-    # episode metadata
-    if ("model" in initial_state) and (initial_state["model"] is not None):
-        # only for robosuite envs
-        ep_data_grp.attrs["model_file"] = initial_state["model"] # model xml for this episode
+    # # write simulator states
+    # if isinstance(states[0], dict):
+    #     states = TensorUtils.list_of_flat_dict_to_dict_of_list(states)
+    #     for k in states:
+    #         ep_data_grp.create_dataset("states/{}".format(k), data=np.array(states[k]))
+    # else:
+    #     ep_data_grp.create_dataset("states", data=np.array(states))
+
+    # # write observations
+    # obs = TensorUtils.list_of_flat_dict_to_dict_of_list(observations)
+    # for k in obs:
+    #     ep_data_grp.create_dataset("obs/{}".format(k), data=np.array(obs[k]), compression="gzip")
+
+    # # write datagen info
+    # datagen_info = TensorUtils.list_of_flat_dict_to_dict_of_list([x.to_dict() for x in datagen_info])
+    # for k in datagen_info:
+    #     if k in ["object_poses", "subtask_term_signals"]:
+    #         # convert list of dict to dict of list again
+    #         datagen_info[k] = TensorUtils.list_of_flat_dict_to_dict_of_list(datagen_info[k])
+    #         for k2 in datagen_info[k]:
+    #             datagen_info[k][k2] = np.array(datagen_info[k][k2])
+    #             ep_data_grp.create_dataset("datagen_info/{}/{}".format(k, k2), data=np.array(datagen_info[k][k2]))
+    #     else:
+    #         ep_data_grp.create_dataset("datagen_info/{}".format(k), data=np.array(datagen_info[k]))
+
+    # # maybe write which source demonstrations generated this episode
+    # if src_demo_inds is not None:
+    #     ep_data_grp.create_dataset("src_demo_inds", data=np.array(src_demo_inds))
+    # if src_demo_labels is not None:
+    #     ep_data_grp.create_dataset("src_demo_labels", data=np.array(src_demo_labels))
+
+    # # episode metadata
+    # if ("model" in initial_state) and (initial_state["model"] is not None):
+    #     # only for robosuite envs
+    #     ep_data_grp.attrs["model_file"] = initial_state["model"] # model xml for this episode
     ep_data_grp.attrs["num_samples"] = actions.shape[0] # number of transitions in this episode
 
     # global metadata

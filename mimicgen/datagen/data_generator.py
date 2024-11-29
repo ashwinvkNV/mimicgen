@@ -18,6 +18,8 @@ from mimicgen.datagen.datagen_info import DatagenInfo
 from mimicgen.datagen.selection_strategy import make_selection_strategy
 from mimicgen.datagen.waypoint import WaypointSequence, WaypointTrajectory
 
+import matplotlib.pyplot as plt
+
 
 class DataGenerator(object):
     """
@@ -240,7 +242,7 @@ class DataGenerator(object):
 
         # sample new task instance
         env.reset()
-        new_initial_state = env.get_state()
+        new_initial_state = env.state
 
         # sample new subtask boundaries
         all_subtask_inds = self.randomize_subtask_boundaries() # shape [N, S, 2], last dim is start and end action lengths
@@ -297,7 +299,7 @@ class DataGenerator(object):
             src_subtask_eef_poses = src_ep_datagen_info.eef_pose[selected_src_subtask_inds[0] : selected_src_subtask_inds[1]]
             src_subtask_target_poses = src_ep_datagen_info.target_pose[selected_src_subtask_inds[0] : selected_src_subtask_inds[1]]
             src_subtask_gripper_actions = src_ep_datagen_info.gripper_action[selected_src_subtask_inds[0] : selected_src_subtask_inds[1]]
-            
+
             # get reference object pose from source demo
             src_subtask_object_pose = src_ep_datagen_info.object_poses[subtask_object_name][selected_src_subtask_inds[0]] if (subtask_object_name is not None) else None
 
@@ -359,6 +361,26 @@ class DataGenerator(object):
                 num_steps_fixed=self.task_spec[subtask_ind]["num_fixed_steps"],
                 action_noise=(float(self.task_spec[subtask_ind]["apply_noise_during_interpolation"]) * self.task_spec[subtask_ind]["action_noise"]),
             )
+
+            # traj_to_execute_poses = traj_to_execute.get_poses()
+
+            # print('traj_to_execute_poses orentations')
+            # print(traj_to_execute_poses)
+
+            # # Extract x and y coordinates
+            # x_coords = [pose[0] for pose in traj_to_execute_poses]
+            # y_coords = [pose[1] for pose in traj_to_execute_poses]
+
+            # # Plotting
+            # plt.figure(figsize=(8, 6))
+            # plt.plot(x_coords, y_coords, marker='o', linestyle='-', color='b', markersize=8)
+            # plt.title('Waypoints Plot')
+            # plt.xlabel('X Coordinate')
+            # plt.ylabel('Y Coordinate')
+            # plt.grid()
+            # plt.axis('equal')  # To maintain the aspect ratio
+            # plt.show()
+
 
             # We initialized @traj_to_execute with a pose to allow @merge to handle linear interpolation
             # for us. However, we can safely discard that first waypoint now, and just start by executing
